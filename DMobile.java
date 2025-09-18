@@ -192,32 +192,45 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                 }).start();
             }
 
-            Thread pingThread = new Thread(new Runnable() {
+            Thread autoSendThread = new Thread(new Runnable() {
                 public void run() {
-                    byte[] buffer = new byte[512];
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e) {}
+
                     while (running && connected) {
                         try {
-                            int len = is.read(buffer);
-                            if (len > 0) {
-                                final String msg = new String(buffer, 0, len, "UTF-8").trim();
-
-                                if (!msg.equals("*Ping!*")) {
-                                    addMessage(msg);
-                                }
-                            }
-                        } catch (IOException e) {
-                            break;
-                        }
+                            sendMessage("/");
+                            Thread.sleep(5000);
+                        } catch (Exception e) {}
                     }
-                    disconnect();
                 }
             });
-            pingThread.start();
+            autoSendThread.start();
 
         } catch (Exception e) {
             addMessage("Error: " + e.getMessage());
         }
     }
+
+    public void run() {
+        byte[] buffer = new byte[512];
+        while (running && connected) {
+            try {
+                int len = is.read(buffer);
+                if (len > 0) {
+                    final String msg = new String(buffer, 0, len, "UTF-8").trim();
+                    if (!msg.equals("*Ping!*")) {
+                        addMessage(msg);
+                    }
+                }
+            } catch (IOException e) {
+                break;
+            }
+        }
+        disconnect();
+    }
+
 
     private void disconnect() {
         try {
@@ -241,22 +254,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
     private void addMessage(String msg) {
         messages.addElement(msg);
         canvas.repaint();
-    }
-
-    public void run() {
-        byte[] buffer = new byte[512];
-        while (running && connected) {
-            try {
-                int len = is.read(buffer);
-                if (len > 0) {
-                    final String msg = new String(buffer, 0, len, "UTF-8");
-                    addMessage(msg);
-                }
-            } catch (IOException e) {
-                break;
-            }
-        }
-        disconnect();
     }
 
     private void saveSettings() {
