@@ -213,16 +213,30 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         }
     }
 
+    private StringBuffer recvBuffer = new StringBuffer();
+
     public void run() {
         byte[] buffer = new byte[512];
         while (running && connected) {
             try {
                 int len = is.read(buffer);
                 if (len > 0) {
-                    final String msg = new String(buffer, 0, len, "UTF-8").trim();
-                    if (!msg.equals("*Ping!*")) {
-                        addMessage(msg);
+                    String chunk = new String(buffer, 0, len, "UTF-8");
+                    recvBuffer.append(chunk);
+
+                    String bufStr = recvBuffer.toString();
+                    int nl;
+                    while ((nl = bufStr.indexOf('\n')) != -1) {
+                        String line = bufStr.substring(0, nl).trim();
+                        if (!line.equals("*Ping!*") && line.length() > 0) {
+                            addMessage(line);
+                        }
+
+                        bufStr = bufStr.substring(nl + 1);
                     }
+
+                    recvBuffer.setLength(0);
+                    recvBuffer.append(bufStr);
                 }
             } catch (IOException e) {
                 break;
@@ -230,6 +244,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         }
         disconnect();
     }
+
 
 
     private void disconnect() {
