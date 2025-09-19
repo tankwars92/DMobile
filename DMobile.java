@@ -3,7 +3,6 @@ import javax.microedition.lcdui.*;
 import javax.microedition.io.*;
 import java.io.*;
 import javax.microedition.rms.*;
-
 import java.util.Vector;
 
 public class DMobile extends MIDlet implements Runnable, CommandListener {
@@ -38,7 +37,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         display = Display.getDisplay(this);
 
         mainMenu = new Form("DMconnect");
-        mainMenu.append("DMconnect client for J2ME. Created by BitByByte on 18.09.2025.\nhttp://dmconnect.w10.site/"); 
+        mainMenu.append("DMconnect client for J2ME. Created by BitByByte on 18.09.2025.\nhttp://dmconnect.w10.site/");
 
         connectCmd = new Command("Connect", Command.OK, 1);
         settingsCmd = new Command("Settings", Command.SCREEN, 2);
@@ -78,7 +77,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         inputBox.addCommand(backCmd);
         inputBox.addCommand(sendCmd);
         inputBox.setCommandListener(this);
-
     }
 
     private Displayable currentScreen = null;
@@ -98,14 +96,12 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         currentScreen = d;
     }
 
-
     public void pauseApp() {}
 
     public void destroyApp(boolean unconditional) {
         running = false;
         disconnect();
         saveSettings();
-
     }
 
     public void commandAction(Command c, Displayable d) {
@@ -124,9 +120,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                 destroyApp(true);
                 notifyDestroyed();
             }
-        }
-
-        else if (d == settingsForm) {
+        } else if (d == settingsForm) {
             if (c == saveSettingsCmd) {
                 serverAddress = serverField.getString().trim();
                 try {
@@ -141,25 +135,17 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
             } else if (c == cancelSettingsCmd) {
                 setCurrentScreen(mainMenu);
             }
-        }
-
-        else if (d == canvas) {
+        } else if (d == canvas) {
             if (c.getLabel().equals("Send")) {
                 setCurrentScreen(inputBox);
             } else if (c == exitCmd) {
                 disconnect();
                 setCurrentScreen(mainMenu);
             }
-        }
-
-        else if (d == inputBox) {
+        } else if (d == inputBox) {
             if (c == sendCmd) {
                 String msg = inputBox.getString();
-
-                if (msg != null && msg.startsWith(" ")) {
-                    msg = msg.substring(1);
-                }
-
+                if (msg != null && msg.startsWith(" ")) msg = msg.substring(1);
                 if (msg != null && msg.length() > 0 && connected) {
                     if (msg.startsWith("/login ")) {
                         int firstSpace = msg.indexOf(' ');
@@ -173,7 +159,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                     }
                     sendMessage(msg);
                 }
-
                 inputBox.setString(" ");
                 setCurrentScreen(canvas);
             } else if (c == backCmd) {
@@ -181,7 +166,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                 setCurrentScreen(canvas);
             }
         }
-
     }
 
     private void connect() {
@@ -207,10 +191,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
 
             Thread autoSendThread = new Thread(new Runnable() {
                 public void run() {
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e) {}
-
+                    try { Thread.sleep(5000); } catch (InterruptedException e) {}
                     while (running && connected) {
                         try {
                             sendMessage("/");
@@ -244,10 +225,8 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                         if (!line.equals("*Ping!*") && line.length() > 0) {
                             addMessage(line);
                         }
-
                         bufStr = bufStr.substring(nl + 1);
                     }
-
                     recvBuffer.setLength(0);
                     recvBuffer.append(bufStr);
                 }
@@ -257,8 +236,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         }
         disconnect();
     }
-
-
 
     private void disconnect() {
         try {
@@ -280,7 +257,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
     }
 
     private void addMessage(String msg) {
-        messages.addElement(msg);
+        messages.addElement(new ChatMessage(msg));
         canvas.repaint();
     }
 
@@ -288,7 +265,6 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         RecordStore rs = null;
         try {
             rs = RecordStore.openRecordStore("DMconnectSettings", true);
-
             RecordEnumeration re = rs.enumerateRecords(null, null, false);
             while (re.hasNextElement()) {
                 int id = re.nextRecordId();
@@ -341,10 +317,27 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         }
     }
 
-    class ChatCanvas extends Canvas {
-        ChatCanvas() {
-            setFullScreenMode(true);
+    class ChatMessage {
+        String text;
+        int colonIndex;
+        boolean validNick;
+
+        ChatMessage(String text) {
+            this.text = text;
+            this.colonIndex = text.indexOf(':');
+            this.validNick = false;
+
+            if (!text.startsWith("**") && colonIndex > 0) {
+                String nickCandidate = text.substring(0, colonIndex);
+                if (nickCandidate.indexOf(' ') == -1) {
+                    this.validNick = true;
+                }
+            }
         }
+    }
+
+    class ChatCanvas extends Canvas {
+        ChatCanvas() { setFullScreenMode(true); }
 
         protected void paint(Graphics g) {
             int w = getWidth();
@@ -361,67 +354,72 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
 
             int maxLines = (h - (lineHeight + 4)) / lineHeight;
             Vector wrappedLines = new Vector();
-            Vector firstLineFlags = new Vector(); 
 
             for (int i = 0; i < messages.size(); i++) {
-                String msg = (String) messages.elementAt(i);
+                ChatMessage cm = (ChatMessage) messages.elementAt(i);
                 int offset = 0;
-                boolean firstLine = true;
-                while (offset < msg.length()) {
+                while (offset < cm.text.length()) {
                     int end = offset;
-                    while (end < msg.length() && g.getFont().stringWidth(msg.substring(offset, end + 1)) <= w - 4) {
+                    while (end < cm.text.length() &&
+                           g.getFont().stringWidth(cm.text.substring(offset, end + 1)) <= w - 4) {
                         end++;
                     }
                     if (end == offset) end++;
-                    wrappedLines.addElement(msg.substring(offset, end));
-                    firstLineFlags.addElement(firstLine ? Boolean.TRUE : Boolean.FALSE);
+                    String line = cm.text.substring(offset, end);
+                    wrappedLines.addElement(new LinePart(line, cm, offset, end));
                     offset = end;
-                    firstLine = false; 
                 }
             }
 
             int start = Math.max(0, wrappedLines.size() - maxLines);
             int y = lineHeight + 6;
+
             for (int i = start; i < wrappedLines.size(); i++) {
-                String line = (String) wrappedLines.elementAt(i);
-                boolean isFirstLine = ((Boolean) firstLineFlags.elementAt(i)).booleanValue();
+                LinePart lp = (LinePart) wrappedLines.elementAt(i);
+                ChatMessage cm = lp.cm;
 
-                if (isFirstLine) {
-                    int colonIndex = line.indexOf(":");
-                    if (colonIndex > 0 && !line.startsWith("**")) {
-                        String nickPart = line.substring(0, colonIndex);
-                        String msgPart = line.substring(colonIndex);
+                if (cm.validNick) {
+                    if (lp.end <= cm.colonIndex) {
+                        drawNick(g, lp.text, y);
+                    } else if (lp.offset <= cm.colonIndex && lp.end > cm.colonIndex) {
+                        String nickPart = lp.text.substring(0, cm.colonIndex - lp.offset);
+                        String restPart = lp.text.substring(cm.colonIndex - lp.offset);
 
-                        if (nickPart.indexOf(' ') == -1) {
-                            if (nickPart.equals(username)) {
-                                g.setColor(0x00FFFF);
-                            } else {
-                                g.setColor(0xFF0000);
-                            }
-                            g.drawString(nickPart + ":", 2, y, Graphics.TOP | Graphics.LEFT);
-
-                            int nickWidth = g.getFont().stringWidth(nickPart + ":");
-                            g.setColor(0xFFFFFF);
-                            g.drawString(msgPart.length() > 1 ? msgPart.substring(1) : "", 2 + nickWidth, y, Graphics.TOP | Graphics.LEFT);
-                        } else {
-                            g.setColor(0xFFFFFF);
-                            g.drawString(line, 2, y, Graphics.TOP | Graphics.LEFT);
-                        }
+                        drawNick(g, nickPart + ":", y);
+                        int nickWidth = g.getFont().stringWidth(nickPart + ":");
+                        g.setColor(0xFFFFFF);
+                        g.drawString(restPart.length() > 1 ? restPart.substring(1) : "",
+                                     2 + nickWidth, y, Graphics.TOP | Graphics.LEFT);
                     } else {
                         g.setColor(0xFFFFFF);
-                        g.drawString(line, 2, y, Graphics.TOP | Graphics.LEFT);
+                        g.drawString(lp.text, 2, y, Graphics.TOP | Graphics.LEFT);
                     }
                 } else {
                     g.setColor(0xFFFFFF);
-                    g.drawString(line, 2, y, Graphics.TOP | Graphics.LEFT);
+                    g.drawString(lp.text, 2, y, Graphics.TOP | Graphics.LEFT);
                 }
                 y += lineHeight;
             }
         }
+
+        private void drawNick(Graphics g, String nickText, int y) {
+            String nick = nickText.substring(0, nickText.length() - 1);
+            if (nick.equals(username)) g.setColor(0x00FFFF);
+            else g.setColor(0xFF0000);
+            g.drawString(nickText, 2, y, Graphics.TOP | Graphics.LEFT);
+        }
+
         protected void keyPressed(int keyCode) {
-            int ga = getGameAction(keyCode);
-            if (ga == FIRE) {
-                setCurrentScreen(inputBox);
+            if (getGameAction(keyCode) == FIRE) setCurrentScreen(inputBox);
+        }
+
+        class LinePart {
+            String text;
+            ChatMessage cm;
+            int offset;
+            int end;
+            LinePart(String text, ChatMessage cm, int offset, int end) {
+                this.text = text; this.cm = cm; this.offset = offset; this.end = end;
             }
         }
     }
