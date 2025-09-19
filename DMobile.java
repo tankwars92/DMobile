@@ -81,10 +81,23 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
 
     }
 
+    private Displayable currentScreen = null;
+
     public void startApp() {
         loadSettings();
-        display.setCurrent(mainMenu);
+        if (currentScreen == null) {
+            display.setCurrent(mainMenu);
+            currentScreen = mainMenu;
+        } else {
+            display.setCurrent(currentScreen);
+        }
     }
+
+    private void setCurrentScreen(Displayable d) {
+        display.setCurrent(d);
+        currentScreen = d;
+    }
+
 
     public void pauseApp() {}
 
@@ -99,13 +112,13 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         if (d == mainMenu) {
             if (c == connectCmd) {
                 connect();
-                display.setCurrent(canvas);
+                setCurrentScreen(canvas);
             } else if (c == settingsCmd) {
                 serverField.setString(serverAddress);
                 portField.setString(Integer.toString(serverPort));
                 usernameField.setString(username);
                 passwordField.setString(password);
-                display.setCurrent(settingsForm);
+                setCurrentScreen(settingsForm);
             } else if (c == exitAppCmd) {
                 saveSettings();
                 destroyApp(true);
@@ -124,18 +137,18 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                 username = usernameField.getString().trim();
                 password = passwordField.getString().trim();
                 saveSettings();
-                display.setCurrent(mainMenu);
+                setCurrentScreen(mainMenu);
             } else if (c == cancelSettingsCmd) {
-                display.setCurrent(mainMenu);
+                setCurrentScreen(mainMenu);
             }
         }
 
         else if (d == canvas) {
             if (c.getLabel().equals("Send")) {
-                display.setCurrent(inputBox);
+                setCurrentScreen(inputBox);
             } else if (c == exitCmd) {
                 disconnect();
-                display.setCurrent(mainMenu);
+                setCurrentScreen(mainMenu);
             }
         }
 
@@ -162,10 +175,10 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
                 }
 
                 inputBox.setString(" ");
-                display.setCurrent(canvas);
+                setCurrentScreen(canvas);
             } else if (c == backCmd) {
                 inputBox.setString(" ");
-                display.setCurrent(canvas);
+                setCurrentScreen(canvas);
             }
         }
 
@@ -408,7 +421,7 @@ public class DMobile extends MIDlet implements Runnable, CommandListener {
         protected void keyPressed(int keyCode) {
             int ga = getGameAction(keyCode);
             if (ga == FIRE) {
-                display.setCurrent(inputBox);
+                setCurrentScreen(inputBox);
             }
         }
     }
